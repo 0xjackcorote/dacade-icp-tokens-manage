@@ -1,0 +1,49 @@
+type Blockchain = record {
+  id : text;
+  name : text;
+  createdAt : nat64;
+  description : text;
+  updatedAt : opt nat64;
+};
+type BlockchainPayload = record { name : text; description : text };
+type Token = record {
+  id : text;
+  decimals : nat64;
+  blockchainId : text;
+  name : text;
+  createdAt : nat64;
+  description : text;
+  totalSupply : nat64;
+  updatedAt : opt nat64;
+  symbol : text;
+  contractAddress : text;
+};
+type TokenPayload = record {
+  decimals : nat64;
+  blockchainId : text;
+  name : text;
+  description : text;
+  totalSupply : nat64;
+  symbol : text;
+  contractAddress : text;
+};
+type _AzleResult = variant { Ok : Blockchain; Err : text };
+type _AzleResult_1 = variant { Ok : Token; Err : text };
+type _AzleResult_2 = variant { Ok : text; Err : text };
+type _AzleResult_3 = variant { Ok : vec Blockchain; Err : text };
+type _AzleResult_4 = variant { Ok : vec Token; Err : text };
+service : () -> {
+  createBlockchain : (BlockchainPayload) -> (_AzleResult);
+  createToken : (TokenPayload) -> (_AzleResult_1);
+  deleteToken : (text) -> (_AzleResult_2);
+  getBlockchain : (text) -> (_AzleResult) query;
+  getBlockchainByName : (text) -> (_AzleResult) query;
+  getBlockchains : () -> (_AzleResult_3) query;
+  getToken : (text) -> (_AzleResult_1) query;
+  getTokenByContractAddress : (text) -> (_AzleResult_1) query;
+  getTokens : () -> (_AzleResult_4) query;
+  getTokensByBlockchainId : (text) -> (_AzleResult_4) query;
+  getTokensByBlockchainName : (text) -> (_AzleResult_4) query;
+  updateBlockchain : (text, BlockchainPayload) -> (_AzleResult);
+  updateToken : (text, TokenPayload) -> (_AzleResult_1);
+}
