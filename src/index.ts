@@ -1,83 +1,85 @@
-import { $query, $update, Record, StableBTreeMap, Vec, match, Result, nat64, ic, Opt, Principal } from 'azle';
+import { $query, $update, Record, StableBTreeMap, Vec, match, Result, nat64, ic, Opt } from 'azle';
 import { v4 as uuidv4 } from 'uuid';
 
 // Define Token type
 type Token = Record<{
     id: string;
-    name: string;               // name of token
-    symbol: string;             // symbol of token
-    decimals: nat64;            // decimals of token
-    totalSupply: nat64;         // total supply of token
-    description: string;        // description of token
-    contractAddress: string;    // smart contract address of token
+    name: string;
+    symbol: string;
+    decimals: nat64;
+    totalSupply: nat64;
+    description: string;
+    contractAddress: string;
     blockchainId: string;
     createdAt: nat64;
     updatedAt: Opt<nat64>;
-}>
+}>;
 
 // Define Blockchain network type
 type Blockchain = Record<{
     id: string;
-    name: string;           // name of blockchain
-    description: string;    // description of blockchain
+    name: string;
+    description: string;
     createdAt: nat64;
     updatedAt: Opt<nat64>;
-}>
+}>;
 
 // Define TokenPayload for creating/updating tokenStorage
 type TokenPayload = Record<{
-    name: string;               // name of token
-    symbol: string;             // symbol of token
-    decimals: nat64;            // decimals of token
-    totalSupply: nat64;         // total supply of token
-    description: string;        // description of token
-    contractAddress: string;    // smart contract address of token
+    name: string;
+    symbol: string;
+    decimals: nat64;
+    totalSupply: nat64;
+    description: string;
+    contractAddress: string;
     blockchainId: string;
-}>
+}>;
 
 // Define BlockchainPayload for creating/updating blockchainStorage
 type BlockchainPayload = Record<{
-    name: string;           // name of blockchain
-    description: string;    // description of blockchain
-}>
+    name: string;
+    description: string;
+}>;
 
 // Create a new StableBTreeMap to store tokens, blockchains
 const tokenStorage = new StableBTreeMap<string, Token>(0, 44, 1024);
 const blockchainStorage = new StableBTreeMap<string, Blockchain>(1, 44, 1024);
 
 $query;
-// Find all tokens info
-export function getTokens(): Result<Vec<Token>, string> {
-    return Result.Ok(tokenStorage.values());
-}
-
-$query;
-// Find all blockchains info
-export function getBlockchains(): Result<Vec<Blockchain>, string> {
-    return Result.Ok(blockchainStorage.values());
-}
-
-$query;
 // Find token info by token ID
-export function getToken(id: string): Result<Token, string> {
+export function getTokenById(id: string): Result<Token, string> {
+    // Validate parameters
+    if (!id) {
+        return Result.Err('Invalid parameters for getting token');
+    }
+
     return match(tokenStorage.get(id), {
         Some: (token) => Result.Ok<Token, string>(token),
-        None: () => Result.Err<Token, string>(`token with id=${id} not found`)
+        None: () => Result.Err<Token, string>(`Token with id=${id} not found`),
     });
 }
 
 $query;
 // Find blockchain info by blockchain ID
-export function getBlockchain(id: string): Result<Blockchain, string> {
+export function getBlockchainById(id: string): Result<Blockchain, string> {
+    // Validate parameters
+    if (!id) {
+        return Result.Err('Invalid parameters for getting blockchain');
+    }
+
     return match(blockchainStorage.get(id), {
         Some: (blockchain) => Result.Ok<Blockchain, string>(blockchain),
-        None: () => Result.Err<Blockchain, string>(`blockchain with id=${id} not found`)
+        None: () => Result.Err<Blockchain, string>(`Blockchain with id=${id} not found`),
     });
 }
 
 $query;
 // Find blockchain info by blockchain name
 export function getBlockchainByName(name: string): Result<Blockchain, string> {
+    // Validate parameters
+    if (!name) {
+        return Result.Err('Invalid parameters for getting blockchain');
+    }
     const blockchains = blockchainStorage.values();
     for (const blockchain of blockchains) {
         if (blockchain.name == name) {
@@ -87,19 +89,96 @@ export function getBlockchainByName(name: string): Result<Blockchain, string> {
     return Result.Err<Blockchain, string>(`Blockchain with name = ${name} not found`);
 }
 
+// Update blockchain info by blockchain id
+$update;
+export function updateBlockchain(id: string, payload: BlockchainPayload): Result<Blockchain, string> {
+    // Validate parameters
+    if (!id) {
+        return Result.Err('Invalid parameters for updating blockchain');
+    }
+
+    // Validate payload
+    if (!payload.name || !payload.description) {
+        return Result.Err<Blockchain, string>('Invalid payload for updating blockchain');
+    }
+    return match(blockchainStorage.get(id), {
+        Some: (blockchain: Blockchain) => {
+
+            try {
+                // Set each property individually
+                const updatedBlockchain: Blockchain = {
+                    id: blockchain.id,
+                    name: payload.name,
+                    description: payload.description,
+                    createdAt: blockchain.createdAt,
+                    updatedAt: Opt.Some(ic.time()),
+                };
+
+                blockchainStorage.insert(blockchain.id, updatedBlockchain);
+                return Result.Ok<Blockchain, string>(updatedBlockchain);
+            } catch (error: any) {
+                return Result.Err<Blockchain, string>(error.message || 'Failed to update blockchain');
+            }
+        },
+        None: () => Result.Err<Blockchain, string>(`Blockchain with id=${id} not found`),
+    });
+}
+
+// Find all tokens info
+$query;
+export function getTokens(): Result<Vec<Token>, string> {
+    try {
+        return Result.Ok(tokenStorage.values());
+    } catch (error) {
+        return Result.Err<Vec<Token>, string>('Failed while trying to get tokens');
+    }
+}
+
+// Find all blockchains info
+$query;
+export function getBlockchains(): Result<Vec<Blockchain>, string> {
+    try {
+        return Result.Ok(blockchainStorage.values());
+    } catch (error) {
+        return Result.Err<Vec<Blockchain>, string>('Failed while trying to get blockchains');
+    }
+}
+
+$query;
+// Find token info by token contract address
+export function getTokenByContractAddress(contractAddress: string): Result<Token, string> {
+    const tokens = tokenStorage.values();
+    for (const token of tokens) {
+        if (token.contractAddress == contractAddress) {
+            return Result.Ok(token);
+        }
+    }
+    return Result.Err<Token, string>(`Token with contractAddress=${contractAddress} not found`);
+}
+
 $query;
 // Find all tokens by blockchain id
 export function getTokensByBlockchainId(blockchainId: string): Result<Vec<Token>, string> {
-    const tokens = tokenStorage.values();
-    const returnedTokens: Token[] = [];
 
-    for (const token of tokens) {
-        if (token.blockchainId == blockchainId) {
-            returnedTokens.push(token);
-        }
+    // Validate parameters
+    if (!blockchainId) {
+        return Result.Err('Invalid parameters for getting blockchain');
     }
 
-    return Result.Ok(returnedTokens);
+    try {
+        const tokens = tokenStorage.values();
+        const returnedTokens: Token[] = [];
+
+        for (const token of tokens) {
+            if (token.blockchainId == blockchainId) {
+                returnedTokens.push(token);
+            }
+        }
+
+        return Result.Ok(returnedTokens);
+    } catch (error) {
+        return Result.Err<Vec<Token>, string>('Failed while trying to get tokens by blockchainId');
+    }
 }
 
 $query;
@@ -127,64 +206,103 @@ export function getTokensByBlockchainName(blockchainName: string): Result<Vec<To
     return Result.Ok(returnedTokens);
 }
 
-$query;
-// Find token by token contract address
-export function getTokenByContractAddress(contractAddress: string): Result<Token, string> {
-    const tokens = tokenStorage.values();
-    for (const token of tokens) {
-        if (token.contractAddress == contractAddress) {
-            return Result.Ok(token);
-        }
-    }
-    return Result.Err<Token, string>(`token with contractAddress=${contractAddress} not found`);
-}
-
 $update;
 // Create new blockchain
 export function createBlockchain(payload: BlockchainPayload): Result<Blockchain, string> {
+    // Validate payload
+    if (!payload.name || !payload.description) {
+        return Result.Err('Invalid payload for creating blockchain');
+    }
+
     const blockchain: Blockchain = {
         id: uuidv4(), // Generate unique ID for new blockchain
         createdAt: ic.time(),
         updatedAt: Opt.None,
-        ...payload,
+        name: payload.name,
+        description: payload.description,
     };
 
-    // revert if blockchain already exist
+    // Revert if blockchain already exists
     const blockchains = blockchainStorage.values();
     for (const chain of blockchains) {
         if (chain.name == blockchain.name) {
-            return Result.Err<Blockchain, string>(`blockchain already exist`);
+            return Result.Err<Blockchain, string>('Blockchain already exists');
         }
     }
+
     blockchainStorage.insert(blockchain.id, blockchain); // store new blockchain
     return Result.Ok(blockchain);
 }
 
 $update;
-// Update blockchain info by blockchain id
-export function updateBlockchain(id: string, payload: BlockchainPayload): Result<Blockchain, string> {
-    return match(blockchainStorage.get(id), {
-        Some: (blockchain: Blockchain) => {
-            const updatedBlockchain: Blockchain = {
-                ...blockchain,
-                ...payload,
-                updatedAt: Opt.Some(ic.time()), // Set the update time to current time
-            };
-            blockchainStorage.insert(blockchain.id, updatedBlockchain);
-            return Result.Ok<Blockchain, string>(updatedBlockchain);
+// Update token info
+export function updateToken(id: string, payload: TokenPayload): Result<Token, string> {
+    // Validate parameters
+    if (!id) {
+        return Result.Err('Invalid parameters for updating token');
+    }
+
+    // Validate payload
+    if (!payload.name || !payload.symbol || !payload.decimals || !payload.totalSupply || !payload.description || !payload.contractAddress || !payload.blockchainId) {
+        return Result.Err('Invalid payload for updating token');
+    }
+
+    if (payload.totalSupply <= 0) {
+        return Result.Err('Invalid parameters totalSupply is always greater than zero');
+    }
+    return match(tokenStorage.get(id), {
+        Some: (token: Token) => {
+
+
+            try {
+                // Set each property individually
+                const updatedToken: Token = {
+                    id: token.id,
+                    name: payload.name,
+                    symbol: payload.symbol,
+                    decimals: payload.decimals,
+                    totalSupply: payload.totalSupply,
+                    description: payload.description,
+                    contractAddress: payload.contractAddress,
+                    blockchainId: payload.blockchainId,
+                    createdAt: token.createdAt,
+                    updatedAt: Opt.Some(ic.time()),
+                };
+
+                tokenStorage.insert(token.id, updatedToken);
+                return Result.Ok<Token, string>(updatedToken);
+            } catch (error: any) {
+                return Result.Err<Token, string>(error.message || 'Failed to update token');
+            }
         },
-        None: () => Result.Err<Blockchain, string>(`Blockchain with id=${id} not found`)
+        None: () => Result.Err<Token, string>(`Token with id=${id} not found`),
     });
 }
 
 $update;
-// create new token
+// Create new token
 export function createToken(payload: TokenPayload): Result<Token, string> {
+    // Validate payload
+    if (!payload.name || !payload.symbol || !payload.decimals || !payload.totalSupply || !payload.description || !payload.contractAddress || !payload.blockchainId) {
+        return Result.Err('Invalid payload for creating token');
+    }
+
+    if (payload.totalSupply <= 0) {
+        return Result.Err('Invalid parameters totalSupply is always greater than zero');
+    }
+
+
     const token: Token = {
         id: uuidv4(),
         createdAt: ic.time(),
         updatedAt: Opt.None,
-        ...payload,
+        name: payload.name,
+        symbol: payload.symbol,
+        decimals: payload.decimals,
+        totalSupply: payload.totalSupply,
+        description: payload.description,
+        contractAddress: payload.contractAddress,
+        blockchainId: payload.blockchainId,
     };
 
     // find blockchain
@@ -197,9 +315,9 @@ export function createToken(payload: TokenPayload): Result<Token, string> {
         }
     }
 
-    // Revert if author not exist
+    // Revert if blockchain does not exist
     if (blockchainId == "") {
-        return Result.Err<Token, string>(`blockchain with id ${payload.blockchainId} not found`);
+        return Result.Err<Token, string>(`Blockchain with id ${payload.blockchainId} not found`);
     }
 
     tokenStorage.insert(token.id, token); // store the token in token storage
@@ -207,29 +325,17 @@ export function createToken(payload: TokenPayload): Result<Token, string> {
 }
 
 $update;
-// Update token info
-export function updateToken(id: string, payload: TokenPayload): Result<Token, string> {
-    return match(tokenStorage.get(id), {
-        Some: (token: Token) => {
-            const updatedToken: Token = {
-                ...token,
-                ...payload,
-                updatedAt: Opt.Some(ic.time()), // update time to current time
-            };
-            tokenStorage.insert(token.id, updatedToken);
-            return Result.Ok<Token, string>(updatedToken);
-        },
-        None: () => Result.Err<Token, string>(`Token with id=${id} not found`)
-    });
-}
-
-$update;
 // Delete token
 export function deleteToken(id: string): Result<string, string> {
+    // Validate parameters
+    if (!id) {
+        return Result.Err('Invalid parameters for deleting token');
+    }
+
     return match(tokenStorage.get(id), {
         Some: (token: Token) => {
             tokenStorage.remove(id); // remove token from token storage
-            return Result.Ok<string, string>(`Token deleted success`);
+            return Result.Ok<string, string>('Token deleted successfully');
         },
         None: () => {
             return Result.Err<string, string>(`Token with id=${id} not found`);
