@@ -166,7 +166,7 @@ $update;
 // Create new blockchain
 export function createBlockchain(payload: BlockchainPayload): Result<Blockchain, string> {
     if (isInvalidString(payload.name) || isInvalidString(payload.description)){
-        return Result.Err(`Invalid payload data: ${payload}`)
+        return Result.Err(`Invalid payload data`)
     }
     const blockchain: Blockchain = {
         id: uuidv4(), // Generate unique ID for new blockchain
@@ -194,7 +194,7 @@ export function updateBlockchain(id: string, payload: BlockchainPayload): Result
         return Result.Err<Blockchain, string>("Invalid blockchain id")
     }
     if (isInvalidString(payload.name) || isInvalidString(payload.description)){
-        return Result.Err(`Invalid payload data: ${payload}`)
+        return Result.Err(`Invalid payload data`)
     }
     return match(blockchainStorage.get(id), {
         Some: (blockchain: Blockchain) => {
@@ -227,7 +227,7 @@ export function createToken(payload: TokenPayload): Result<Token, string> {
         return Result.Err<Token, string>("Invalid blockchain id")
     }
     if (isInvalidString(payload.name) || isInvalidString(payload.description) || isInvalidString(payload.symbol)){
-        return Result.Err(`Invalid payload data: ${payload}`)
+        return Result.Err(`Invalid payload data`)
     }
 
     // find blockchain
@@ -274,7 +274,7 @@ export function updateToken(id: string, payload: TokenPayload): Result<Token, st
     }
 
     if (isInvalidString(payload.name) || isInvalidString(payload.description) || isInvalidString(payload.symbol)){
-        return Result.Err(`Invalid payload data: ${payload}`)
+        return Result.Err(`Invalid payload data`)
     }
     return match(tokenStorage.get(id), {
         Some: (token: Token) => {
