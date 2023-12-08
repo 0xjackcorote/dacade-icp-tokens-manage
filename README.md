@@ -1,5 +1,12 @@
 # Tokens Manage ICP
 
+## Setup and deploy canister
+```bash
+yarn
+dfx start --background --clean
+dfx deploy
+```
+
 ## Functions
 
 1. Create new blockchain info
